@@ -181,6 +181,42 @@ error_dev:
 }
 
 /**
+ * @brief Read the temperature.
+ * @param dev - The device structure.
+ * @param temp_deg - The temperature value in degree celsius.
+ * @return 0 in case of success, negative error code otherwise.
+ */
+int ade9430_read_temp(struct ade9430_dev *dev, int *temp_deg)
+{
+	int ret;
+	uint32_t temp_raw, temp, gain, offset;
+
+	ret = ade9430_update_bits(dev, ADE9430_REG_TEMP_CFG, ADE9430_TEMP_START,
+				no_os_field_prep(ADE9430_TEMP_START, 1));
+	if (ret)
+		return ret;
+
+	no_os_mdelay(10);
+
+	ret = ade9430_read(dev, ADE9430_REG_TEMP_RSLT, &temp_raw);
+	if (ret)
+		return ret;
+
+	temp_raw = no_os_field_get(ADE9430_TEMP_RESULT, temp_raw);
+
+	ret = ade9430_read(dev, ADE9430_REG_TEMP_TRIM, &temp);
+	if (ret)
+		return ret;
+
+	gain = no_os_field_get(ADE9430_TEMP_GAIN, temp);
+	offset = no_os_field_get(ADE9430_TEMP_OFFSET, temp);
+
+	*temp_deg = temp_raw * (((-1000) * (int64_t)gain / 65536)) / 1000 + (offset / 32);
+
+	return 0;
+}
+
+/**
  * @brief Remove the device and release resources.
  * @param dev - The device structure.
  * @return 0 in case of success, negative error code otherwise.
