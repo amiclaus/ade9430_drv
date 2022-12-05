@@ -851,3 +851,49 @@
 
 /* ADE9430_VAR_DIS Bit Definition */
 #define ADE9430_VARDIS			NO_OS_BIT(0)
+
+
+/******************************************************************************/
+/*************************** Types Declarations *******************************/
+/******************************************************************************/
+
+/**
+ * @struct ade9430_init_param
+ * @brief ADE9430 Device initialization parameters.
+ */
+struct ade9430_init_param {
+	/** Device communication descriptor */
+	struct no_os_spi_init_param 	*spi_init;
+}
+
+/**
+ * @struct ade9430_dev
+ * @brief ADE9430 Device structure.
+ */
+struct ade9430_dev {
+	/** Device communication descriptor */
+	struct no_os_spi_desc		*spi_desc;
+}
+
+/******************************************************************************/
+/************************ Functions Declarations ******************************/
+/******************************************************************************/
+
+/* Read device register. */
+int ade9430_read(struct ade9430_dev *dev, uint8_t reg_addr,
+		 uint8_t *reg_data);
+
+/* Write device register. */
+int ade9430_write(struct ade9430_dev *dev, uint8_t reg_addr,
+		  uint8_t reg_data);
+
+/* Update specific register bits. */
+int ade9430_update_bits(struct ade9430_dev *dev, uint8_t reg_addr,
+			uint8_t mask, uint8_t reg_data);
+
+/* Initialize the device. */
+int ade9430_init(struct ade9430_dev **device,
+		 struct ade9430_init_param init_param);
+
+/* Remove the device and release resources. */
+int ade9430_remove(struct ade9430_dev *dev);
