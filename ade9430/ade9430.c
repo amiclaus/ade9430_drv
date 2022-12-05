@@ -139,6 +139,7 @@ int ade9430_init(struct ade9430_dev **device,
 		 struct ade9430_init_param init_param)
 {
 	struct ade9430_dev *dev;
+	uint32_t chip_id;
 	int ret;
 
 	dev = (struct ade9430_dev *)calloc(1, sizeof(*dev));
@@ -149,6 +150,25 @@ int ade9430_init(struct ade9430_dev **device,
 	ret = no_os_spi_init(&dev->spi_desc, init_param.spi_init);
 	if (ret)
 		goto error_dev;
+
+	ret = ade9430_update_bits(dev, ADE9430_REG_CONFIG1, ADE9430_SWRST,
+				no_os_field_prep(ADE9430_SWRST, 1));
+	if (ret)
+		return ret;
+
+	no_os_mdelay(100);
+
+	ret = ade9430_read(dev, ADE9430_REG_CONFIG5, &chip_id);
+	if (ret)
+		return ret;
+
+	if (chip_id != 0x63)
+		return -EINVAL;
+
+	ret = ade9430_update_bits(dev, ADE9430_REG_TEMP_CFG, ADE9430_TEMP_EN,
+				no_os_field_prep(ADE9430_TEMP_EN, 1));
+	if (ret)
+		return ret;
 
 	*device = dev;
 
