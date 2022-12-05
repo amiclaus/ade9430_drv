@@ -829,7 +829,12 @@
 #define ADE9430_CRC_MASK0_EN		NO_OS_BIT(15)
 
 /* ADE9430_TEMP_CFG Bit Definition */
-#define ADE9430_TEMP_START		NO_OS_GENMASK(11, 0)
+#define ADE9430_TEMP_START		NO_OS_BIT(3)
+#define ADE9430_TEMP_EN			NO_OS_BIT(2)
+#define ADE9430_TEMP_TIME		NO_OS_GENMASK(1, 0)
+
+/* ADE9430_TEMP_RSLT Bit Definition */
+#define ADE9430_TEMP_RESULT		NO_OS_GENMASK(11, 0)
 
 /* ADE9430_PGA_GAIN Bit Definition */
 #define ADE9430_VC_GAIN			NO_OS_GENMASK(13, 12)
@@ -864,7 +869,7 @@
 struct ade9430_init_param {
 	/** Device communication descriptor */
 	struct no_os_spi_init_param 	*spi_init;
-}
+};
 
 /**
  * @struct ade9430_dev
@@ -873,27 +878,32 @@ struct ade9430_init_param {
 struct ade9430_dev {
 	/** Device communication descriptor */
 	struct no_os_spi_desc		*spi_desc;
-}
+};
 
 /******************************************************************************/
 /************************ Functions Declarations ******************************/
 /******************************************************************************/
 
 /* Read device register. */
-int ade9430_read(struct ade9430_dev *dev, uint8_t reg_addr,
-		 uint8_t *reg_data);
+int ade9430_read(struct ade9430_dev *dev, uint16_t reg_addr,
+		 uint32_t *reg_data);
 
 /* Write device register. */
-int ade9430_write(struct ade9430_dev *dev, uint8_t reg_addr,
-		  uint8_t reg_data);
+int ade9430_write(struct ade9430_dev *dev, uint16_t reg_addr,
+		  uint32_t reg_data);
 
 /* Update specific register bits. */
-int ade9430_update_bits(struct ade9430_dev *dev, uint8_t reg_addr,
-			uint8_t mask, uint8_t reg_data);
+int ade9430_update_bits(struct ade9430_dev *dev, uint16_t reg_addr,
+			uint32_t mask, uint32_t reg_data);
 
 /* Initialize the device. */
 int ade9430_init(struct ade9430_dev **device,
 		 struct ade9430_init_param init_param);
 
+/* Read temperature */
+int ade9430_read_temp(struct ade9430_dev *dev, int *temp_deg);
+
 /* Remove the device and release resources. */
 int ade9430_remove(struct ade9430_dev *dev);
+
+#endif // __ADE9430_H__
