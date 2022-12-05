@@ -57,18 +57,25 @@
  * @param reg_data - The data read from the register.
  * @return 0 in case of success, negative error code otherwise.
  */
-int ade9430_read(struct ade9430_dev *dev, uint8_t reg_addr, uint8_t *reg_data)
+int ade9430_read(struct ade9430_dev *dev, uint16_t reg_addr, uint32_t *reg_data)
 {
 	int ret;
-	uint8_t buff[2] = {0};
+	uint8_t buff[6] = {0};
 
-	buff[0] = ADE9430_SPI_READ | reg_addr;
+	buff[0] = reg_addr >> 4;
+	buff[1] = ADE9430_SPI_READ | reg_addr << 4;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, buff, 2);
-	if (ret)
-		return ret;
-
-	*reg_data = buff[1];
+	if (reg_addr >= ADE9430_REG_CONFIG1 && reg_addr <= ADE9430_REG_VERSION) {
+		ret = no_os_spi_write_and_read(dev->spi_desc, buff, 4);
+		if (ret)
+			return ret;
+		*reg_data = no_os_get_unaligned_be16(&buff[2]);
+	} else {
+		ret = no_os_spi_write_and_read(dev->spi_desc, buff, 6);
+		if (ret)
+			return ret;
+		*reg_data = no_os_get_unaligned_be32(&buff[2]);
+	}
 
 	return 0;
 }
@@ -80,14 +87,21 @@ int ade9430_read(struct ade9430_dev *dev, uint8_t reg_addr, uint8_t *reg_data)
  * @param reg_data - The data to be written.
  * @return 0 in case of success, negative error code otherwise.
  */
-int ade9430_write(struct ade9430_dev *dev, uint8_t reg_addr, uint8_t reg_data)
+int ade9430_write(struct ade9430_dev *dev, uint16_t reg_addr, uint32_t reg_data)
 {
-	uint8_t buff[2] = {0};
+	uint8_t buff[6] = {0};
 
-	buff[0] = reg_addr;
-	buff[1] = reg_data;
+	buff[0] = reg_addr >> 4;
+	buff[1] = reg_addr << 4;
 
-	return no_os_spi_write_and_read(dev->spi_desc, buff, 2);
+	if (reg_addr >= ADE9430_REG_CONFIG1 && reg_addr <= ADE9430_REG_VERSION) {
+		no_os_put_unaligned_be16(reg_data, &buff[2]);
+		return no_os_spi_write_and_read(dev->spi_desc, buff, 4);
+	} else {
+		no_os_put_unaligned_be32(reg_data, &buff[2]);
+		return no_os_spi_write_and_read(dev->spi_desc, buff, 6);
+	}
+
 }
 
 /**
@@ -98,11 +112,11 @@ int ade9430_write(struct ade9430_dev *dev, uint8_t reg_addr, uint8_t reg_data)
  * @param reg_data - The data to be written.
  * @return 0 in case of success, negative error code otherwise.
  */
-int ade9430_update_bits(struct ade9430_dev *dev, uint8_t reg_addr,
-			uint8_t mask, uint8_t reg_data)
+int ade9430_update_bits(struct ade9430_dev *dev, uint16_t reg_addr,
+			uint32_t mask, uint32_t reg_data)
 {
 	int ret;
-	uint8_t data;
+	uint32_t data;
 
 	ret = ade9430_read(dev, reg_addr, &data);
 	if (ret)
