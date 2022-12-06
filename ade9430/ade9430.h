@@ -878,6 +878,12 @@ struct ade9430_init_param {
 struct ade9430_dev {
 	/** Device communication descriptor */
 	struct no_os_spi_desc		*spi_desc;
+	uint32_t			awatt_acc;
+	uint32_t			bwatt_acc;
+	uint32_t			cwatt_acc;
+	uint64_t			awatthr;
+	uint64_t			bwatthr;
+	uint64_t			cwatthr;
 };
 
 /******************************************************************************/
@@ -902,6 +908,9 @@ int ade9430_init(struct ade9430_dev **device,
 
 /* Read temperature */
 int ade9430_read_temp(struct ade9430_dev *dev, int *temp_deg);
+
+/* Read Energy/Power */
+int ade9430_read_watt(struct ade9430_dev *dev);
 
 /* Remove the device and release resources. */
 int ade9430_remove(struct ade9430_dev *dev);

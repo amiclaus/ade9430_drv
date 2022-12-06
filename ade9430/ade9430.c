@@ -217,6 +217,91 @@ int ade9430_read_temp(struct ade9430_dev *dev, int *temp_deg)
 }
 
 /**
+ * @brief Read the power/energy.
+ * @param dev - The device structure.
+ * @param temp_deg - The temperature value in degree celsius.
+ * @return 0 in case of success, negative error code otherwise.
+ */
+int ade9430_read_watt(struct ade9430_dev *dev)
+{
+	int ret;
+	uint32_t temp;
+
+	ret = ade9430_read(dev, ADE9430_REG_EP_CFG, &temp);
+	if (ret)
+		return ret;
+
+	if(!(no_os_field_get(ADE9430_EGY_PWR_EN, temp))) {
+		ret = ade9430_update_bits(dev, ADE9430_REG_EP_CFG, ADE9430_EGY_PWR_EN,
+					no_os_field_prep(ADE9430_EGY_PWR_EN, 1));
+		if (ret)
+			return ret;
+	}
+
+	ret = ade9430_read(dev, ADE9430_REG_RUN, &temp);
+	if (ret)
+		return ret;
+
+	if (temp) {
+		ret = ade9430_write(dev, ADE9430_REG_RUN, 1);
+		if (ret)
+			return ret;
+	}
+
+	no_os_mdelay(5000);
+
+	ret = ade9430_read(dev, ADE9430_REG_AWATT_ACC, dev->awatt_acc);
+	if (ret)
+		return ret;
+
+	ret = ade9430_read(dev, ADE9430_REG_BWATT_ACC, dev->bwatt_acc);
+	if (ret)
+		return ret;
+
+	ret = ade9430_read(dev, ADE9430_REG_CWATT_ACC, dev->cwatt_acc);
+	if (ret)
+		return ret;
+
+	ret = ade9430_read(dev, ADE9430_REG_AWATTHR_LO, &temp);
+	if (ret)
+		return ret;
+
+	dev->awatthr = temp;
+
+	ret = ade9430_read(dev, ADE9430_REG_AWATTHR_HI, &temp);
+	if (ret)
+		return ret;
+
+	dev->awatthr = (temp << 32ULL) | dev->awatthr;
+
+	ret = ade9430_read(dev, ADE9430_REG_BWATTHR_LO, &temp);
+	if (ret)
+		return ret;
+
+	dev->bwatthr = temp;
+
+	ret = ade9430_read(dev, ADE9430_REG_BWATTHR_HI, &temp);
+	if (ret)
+		return ret;
+
+	dev->bwatthr = (temp << 32ULL) | dev->bwatthr;
+
+	ret = ade9430_read(dev, ADE9430_REG_CWATTHR_LO, &temp);
+	if (ret)
+		return ret;
+
+	dev->cwatthr = temp;
+
+	ret = ade9430_read(dev, ADE9430_REG_CWATTHR_HI, &temp);
+	if (ret)
+		return ret;
+
+	dev->cwatthr = (temp << 32ULL) | dev->cwatthr;
+
+	return 0;
+}
+
+/**
  * @brief Remove the device and release resources.
  * @param dev - The device structure.
  * @return 0 in case of success, negative error code otherwise.
