@@ -46,11 +46,13 @@
 #include <stdio.h>
 #include "parameters.h"
 #include "no_os_uart.h"
+#include "no_os_gpio.h"
 #include "no_os_delay.h"
 #include "no_os_timer.h"
 #include "mqtt_client.h"
 #include "ade9430.h"
 
+#include "maxim_gpio.h"
 #include "maxim_uart.h"
 #include "maxim_irq.h"
 #include "maxim_timer.h"
@@ -148,6 +150,32 @@ int main()
 	struct max_gpio_init_param gpio_extra_ip = {
 		.direction = NO_OS_GPIO_OUT,
 	};
+
+	struct no_os_gpio_init_param gpio_reset_ip = {
+		.port = 2,
+		.number = 17,
+		.pull = NO_OS_PULL_NONE,
+		.platform_ops = &max_gpio_ops,
+		.extra = &gpio_extra_ip
+	};
+
+	struct no_os_gpio_desc *rst_gpio;
+
+	status = no_os_gpio_get(&rst_gpio, &gpio_reset_ip);
+	if (status < 0)
+		return status;
+	
+	status = no_os_gpio_set_value(rst_gpio, NO_OS_GPIO_LOW);
+	if (status < 0)
+		return status;
+	
+	no_os_mdelay(500);
+
+	status = no_os_gpio_set_value(rst_gpio, NO_OS_GPIO_HIGH);
+	if (status < 0)
+		return status;
+	
+	no_os_mdelay(2000);
 
 	const struct no_os_irq_platform_ops *platform_irq_ops = &max_irq_ops;
 
