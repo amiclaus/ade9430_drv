@@ -2,7 +2,7 @@
  *   @file   parameters.h
  *   @brief  Definitions specific to Maxim platform used by eval-adxl355-pmdz
  *           project.
- *   @author Ciprian Regus (ciprian.regus@analog.com)
+ *   @author Antoniu Miclaus (antoniu.miclaus@analog.com)
 ********************************************************************************
  * Copyright 2022(c) Analog Devices, Inc.
  *

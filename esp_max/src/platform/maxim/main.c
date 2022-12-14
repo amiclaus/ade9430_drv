@@ -1,7 +1,7 @@
 /***************************************************************************//**
  *   @file   main.c
  *   @brief  Main file for aducm3029 platform of iio_demo project.
- *   @author RBolboac (ramona.bolboaca@analog.com)
+ *   @author Antoniu Miclaus (antoniu.miclaus@analog.com)
 ********************************************************************************
  * Copyright 2022(c) Analog Devices, Inc.
  *
