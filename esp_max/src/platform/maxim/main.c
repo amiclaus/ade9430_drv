@@ -63,7 +63,6 @@
 #include "tcp_socket.h"
 
 // The default baudrate iio_app will use to print messages to console.
-#define UART_BAUDRATE_DEFAULT	115200
 #define PRINT_ERR_AND_RET(msg, ret) do {\
 	printf("%s - Code: %d (-0x%x) \n", msg, ret, ret);\
 	return ret;\
@@ -118,10 +117,11 @@ void mqtt_message_handler(struct mqtt_message_data *msg)
 }
 
 int main()
-{
-	int ret = -EINVAL;
+{	int ret = -EINVAL;
 	int i = 0;
 	int status;
+	char buf[200];
+
 	struct max_spi_init_param spi_extra_ip  = {
 		.numSlaves = 1,
 		.polarity = SPI_SS_POL_LOW
@@ -204,7 +204,7 @@ int main()
 		/* TODO: remove this ifdef when asynchrounous rx is implemented on every platform. */
 		.irq_id = UART_IRQ_ID,
 		.asynchronous_rx = true,
-		.baud_rate = UART_BAUDRATE_DEFAULT,
+		.baud_rate = UART_BAUDRATE,
 		.size = NO_OS_UART_CS_8,
 		.parity = NO_OS_UART_PAR_NO,
 		.stop = NO_OS_UART_STOP_1_BIT,
@@ -215,6 +215,10 @@ int main()
 	status = no_os_uart_init(&uart_desc, &luart_par);
 	if (status < 0)
 		return status;
+	
+	// no_os_uart_write(uart_desc, "AT+RST\r\n", 8);
+
+	// no_os_mdelay(100);
 
 	static struct tcp_socket_init_param socket_param;
 
@@ -225,9 +229,34 @@ int main()
 		.uart_irq_conf = uart_desc,
 		.uart_irq_id = UART_IRQ_ID
 	};
+
+	struct no_os_uart_desc *uart0_desc;
+
+	struct no_os_uart_init_param luart0_par = {
+		.device_id = 0,
+		/* TODO: remove this ifdef when asynchrounous rx is implemented on every platform. */
+		.irq_id = UART0_IRQn,
+		.asynchronous_rx = true,
+		.baud_rate = 57600,
+		.size = NO_OS_UART_CS_8,
+		.parity = NO_OS_UART_PAR_NO,
+		.stop = NO_OS_UART_STOP_1_BIT,
+		.extra = &ip
+	};
+	
+	ret = no_os_uart_init(&uart0_desc, &luart0_par);
+	if (ret < 0)
+		return ret;
+
+	no_os_uart_write(uart0_desc, "START\n", 6);
+	no_os_mdelay(100);
+	no_os_uart_remove(uart0_desc);
+
 	status = wifi_init(&wifi, &wifi_param);
 	if (status < 0)
 		return status;
+
+	no_os_mdelay(100);
 
 	status = wifi_connect(wifi, WIFI_SSID, WIFI_PWD);
 	if (status < 0)
