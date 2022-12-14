@@ -152,7 +152,7 @@ int ade9430_init(struct ade9430_dev **device,
 		goto error_dev;
 
 	ret = ade9430_update_bits(dev, ADE9430_REG_CONFIG1, ADE9430_SWRST,
-				no_os_field_prep(ADE9430_SWRST, 1));
+				  no_os_field_prep(ADE9430_SWRST, 1));
 	if (ret)
 		return ret;
 
@@ -166,7 +166,7 @@ int ade9430_init(struct ade9430_dev **device,
 		return -EINVAL;
 
 	ret = ade9430_update_bits(dev, ADE9430_REG_TEMP_CFG, ADE9430_TEMP_EN,
-				no_os_field_prep(ADE9430_TEMP_EN, 1));
+				  no_os_field_prep(ADE9430_TEMP_EN, 1));
 	if (ret)
 		return ret;
 
@@ -192,7 +192,7 @@ int ade9430_read_temp(struct ade9430_dev *dev, int *temp_deg)
 	uint32_t temp_raw, temp, gain, offset;
 
 	ret = ade9430_update_bits(dev, ADE9430_REG_TEMP_CFG, ADE9430_TEMP_START,
-				no_os_field_prep(ADE9430_TEMP_START, 1));
+				  no_os_field_prep(ADE9430_TEMP_START, 1));
 	if (ret)
 		return ret;
 
@@ -211,7 +211,8 @@ int ade9430_read_temp(struct ade9430_dev *dev, int *temp_deg)
 	gain = no_os_field_get(ADE9430_TEMP_GAIN, temp);
 	offset = no_os_field_get(ADE9430_TEMP_OFFSET, temp);
 
-	*temp_deg = temp_raw * (((-1000) * (int64_t)gain / 65536)) / 1000 + (offset / 32);
+	*temp_deg = temp_raw * (((-1000) * (int64_t)gain / 65536)) / 1000 +
+		    (offset / 32);
 
 	return 0;
 }
@@ -233,7 +234,7 @@ int ade9430_read_watt(struct ade9430_dev *dev)
 
 	if(!(no_os_field_get(ADE9430_EGY_PWR_EN, temp))) {
 		ret = ade9430_update_bits(dev, ADE9430_REG_EP_CFG, ADE9430_EGY_PWR_EN,
-					no_os_field_prep(ADE9430_EGY_PWR_EN, 1));
+					  no_os_field_prep(ADE9430_EGY_PWR_EN, 1));
 		if (ret)
 			return ret;
 	}
