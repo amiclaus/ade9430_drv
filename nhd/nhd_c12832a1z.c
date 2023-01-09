@@ -320,49 +320,149 @@ static const uint8_t ASC16[256][8] = {
  * @param device - The device structure.
  * @return Returns 0 in case of success or negative error code otherwise.
 *******************************************************************************/
-int32_t nhd_c12832a1z_init(struct display_dev *device)
+int nhd_c12832a1z_init(struct nhd_c12832a1z_dev **device,
+				struct nhd_c12832a1z_init_param init_param)
 {
-	int32_t	ret;
-	uint8_t command[3];
-	struct nhd_c12832a1z_extra *extra;
+	struct nhd_c12832a1z_dev *dev;
+	int ret;
 
-	extra = device->extra;
-	ret = no_os_spi_init(&extra->spi_desc, extra->spi_ip);
+	dev = (struct nhd_c12832a1z_dev *)calloc(1, sizeof(*dev));
+	if (!dev)
+		return -ENOMEM;
+
+	ret = no_os_spi_init(&dev->spi_desc, init_param.spi_ip);
 	if (ret)
 		return ret;
 
-	ret = no_os_gpio_get(&extra->dc_pin, extra->dc_pin_ip);
+	ret = no_os_gpio_get(&dev->dc_pin, init_param.dc_pin_ip);
 	if (ret)
 		goto error_spi;
 
-	ret = no_os_gpio_get_optional(&extra->reset_pin, extra->reset_pin_ip);
+	ret = no_os_gpio_get_optional(&dev->reset_pin, init_param.reset_pin_ip);
 	if (ret)
 		goto error_dc;
 
 	// initial pin state
-	ret = no_os_gpio_direction_output(extra->dc_pin, NHD_C12832A1Z_DC_CMD);
-	if (ret)
-		goto error_rst;
-
-	ret = no_os_spi_write_and_read(extra->spi_desc, NHD_C12832A1Z_DISP_OFF, 1U);
+	ret = no_os_gpio_direction_output(dev->dc_pin, NHD_C12832A1Z_DC_CMD);
 	if (ret)
 		goto error_rst;
 	
-	if (extra->reset_pin) {
-		ret = no_os_gpio_direction_output(extra->reset_pin, NHD_C12832A1Z_RST_ON);
+	if (dev->reset_pin) {
+		ret = no_os_gpio_direction_output(dev->reset_pin, NHD_C12832A1Z_RST_ON);
 		if (ret)
 			goto error_rst;
 
 		no_os_udelay(3U);
-		ret = no_os_gpio_set_value(extra->reset_pin, NHD_C12832A1Z_RST_OFF);
+		ret = no_os_gpio_set_value(dev->reset_pin, NHD_C12832A1Z_RST_OFF);
 		if (ret)
 			goto error_rst;
 	}
 
+	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_ADC_NORMAL, 1U);
+	if (ret)
+		goto error_rst;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, NHD_C12832A1Z_DISP_OFF, 1U);
+	if (ret)
+		goto error_rst;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_COM_REVERSE, 1U);
+	if (ret)
+		goto error_rst;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_LCD_BIAS, 1U);
+	if (ret)
+		goto error_rst;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_PWR_CTRL, 1U);
+	if (ret)
+		goto error_rst;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_RES_RATIO, 1U);
+	if (ret)
+		goto error_rst;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_ELECTRIC_VOL, 1U);
+	if (ret)
+		goto error_rst;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_ELECTRIC_VAL, 1U);
+	if (ret)
+		goto error_rst;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, NHD_C12832A1Z_DISP_ON, 1U);
+	if (ret)
+		goto error_rst;
+
+	*device = dev;
+
+	return 0;
+
 error_rst:
-	no_os_gpio_remove(extra->reset_pin);
+	no_os_gpio_remove(dev->reset_pin);
 error_dc:
-	no_os_gpio_remove(extra->dc_pin);
+	no_os_gpio_remove(dev->dc_pin);
 error_spi:
-	no_os_spi_remove(extra->spi_desc);
+	no_os_spi_remove(dev->spi_desc);
+
+	return ret;
+}
+
+/** Prints character at selected position. */
+int nhd_c12832a1z_print_ascii(struct nhd_c12832a1z_dev *dev, uint8_t ascii,
+			     uint8_t row, uint8_t column)
+{
+	int ret;
+	unsigned char page = 0xB0;
+	uint8_t framebuffer_memory[4][128];
+
+	ret = no_os_gpio_direction_output(dev->dc_pin, NHD_C12832A1Z_DC_CMD);
+	if (ret)
+		return ret;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, 0x40, 1U);
+	if (ret)
+		return ret;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, page, 1U);
+	if (ret)
+		return ret;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, 0x10, 1U);
+	if (ret)
+		return ret;
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, 0x00, 1U);
+	if (ret)
+		return ret;
+	
+	ret = no_os_gpio_direction_output(dev->dc_pin, NHD_C12832A1Z_DC_DATA);
+	if (ret)
+		return ret;
+
+	framebuffer_memory[0][0] = ASC16[1][2];
+
+	ret = no_os_spi_write_and_read(dev->spi_desc, framebuffer_memory[0][0], 1U);
+	if (ret)
+		return ret;
+
+}
+
+/***************************************************************************//**
+ * @brief  nhd_c12832a1z turns display on/off.
+ *
+ * @param device - The device structure
+ * @param on_off - Display state
+ * @return Returns 0 in case of success or negative error code otherwise.
+*******************************************************************************/
+int nhd_c12832a1z_display_on_off(struct nhd_c12832a1z_dev *dev, uint8_t on_off)
+{
+	int	ret;
+	uint8_t command;
+
+	ret = no_os_gpio_set_value(dev->dc_pin, NHD_C12832A1Z_DC_CMD);
+	if (ret != 0)
+		return -1;
+	command = (on_off == true) ? NHD_C12832A1Z_DISP_ON : NHD_C12832A1Z_DISP_OFF;
+	return no_os_spi_write_and_read(dev->spi_desc, &command, 1U);
 }
