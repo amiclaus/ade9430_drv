@@ -110,6 +110,8 @@ int nhd_c12832a1z_write_cmd(struct nhd_c12832a1z_dev *dev, uint8_t cmd);
 
 int nhd_c12832a1z_write_data(struct nhd_c12832a1z_dev *dev, uint8_t data);
 
+int nhd_c12832a1z_print_string(struct nhd_c12832a1z_dev *dev, char *msg);
+
 int nhd_c12832a1z_clear_lcd(struct nhd_c12832a1z_dev *dev);
 
 /** Initialize the nhd_c12832a1z peripheral for display operation. */

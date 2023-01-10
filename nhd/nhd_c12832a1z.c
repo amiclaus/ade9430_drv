@@ -343,6 +343,64 @@ int nhd_c12832a1z_write_data(struct nhd_c12832a1z_dev *dev, uint8_t data)
 	return no_os_spi_write_and_read(dev->spi_desc, &data, 1U);
 }
 
+
+int nhd_c12832a1z_print_string(struct nhd_c12832a1z_dev *dev, char *msg)
+{
+	int ret;
+
+	uint8_t framebuffer_memory[4][128] = { 0 };
+
+	int32_t count = strlen(msg);
+	int32_t t_cursor = 0;
+
+	if ((t_cursor + count) > 128)
+		count = 128 - t_cursor;
+
+	for (int j = 0; j < count; ++j) {
+		int cursor = (t_cursor + j) % 64;
+		int y = cursor >> 4; // page
+		int x = (cursor & 0xf) << 3; // segment
+
+		for (int i = 0; i < 8; i++)
+			framebuffer_memory[y][x+i] = ASC16[msg[cursor]][i];
+	}
+
+
+	uint8_t page = 0xB0;
+	// lcd_write_control(0xAE); // Display OFF
+	ret = nhd_c12832a1z_write_cmd(dev, 0x40); // Display start address + 0x40
+	if (ret)
+		return ret;
+	for (unsigned int i = 0; i < 4; i++) {
+		// 32pixel display / 8 pixels per page = 4 pages
+		ret = nhd_c12832a1z_write_cmd(dev, page); // send page address
+		if (ret)
+			return ret;
+		// Sets the most significant 4 bits of the display RAM column address.
+		ret = nhd_c12832a1z_write_cmd(dev, 0x10); // column address upper 4 bits + 0x10
+		// Sets the least significant 4 bits of the display RAM column address.
+		if (ret)
+			return ret;
+		ret = nhd_c12832a1z_write_cmd(dev, 0x00); // column address lower 4 bits + 0x00
+		if (ret)
+			return ret;
+		for (unsigned int j = 0; j < 128; j++) {
+			// 128 columns wide
+			ret = nhd_c12832a1z_write_data(dev, framebuffer_memory[i][j]); // send picture data
+			if (ret)
+				return ret;
+		}
+		page++; // after 128 columns, go to next page
+	}
+
+	ret = nhd_c12832a1z_write_cmd(dev, NHD_C12832A1Z_DISP_ON);
+	if (ret)
+		return ret;
+	// nhd_c12832a1z_write_cmd(dev, 0xAF); // Display on
+
+	return 0;
+}
+
 int nhd_c12832a1z_clear_lcd(struct nhd_c12832a1z_dev *dev)
 {
 	int ret;
@@ -366,12 +424,16 @@ int nhd_c12832a1z_clear_lcd(struct nhd_c12832a1z_dev *dev)
 			return ret;
 		for (unsigned int j = 0; j < 128; j++) {
 			// 128 columns wide
-			ret = nhd_c12832a1z_write_data(dev, 0xFF); // send picture data
+			ret = nhd_c12832a1z_write_data(dev, 0x00); // send picture data
 			if (ret)
 				return ret;
 		}
 		page++; // after 128 columns, go to next page
 	}
+
+	ret = nhd_c12832a1z_write_cmd(dev, NHD_C12832A1Z_DISP_ON);
+	if (ret)
+		return ret;
 	// nhd_c12832a1z_write_cmd(dev, 0xAF); // Display on
 
 	return 0;
@@ -454,11 +516,11 @@ int nhd_c12832a1z_init(struct nhd_c12832a1z_dev **device,
 	if (ret)
 		goto error_rst;
 
-	ret = nhd_c12832a1z_write_cmd(dev, NHD_C12832A1Z_DISP_ON);
+	ret = nhd_c12832a1z_clear_lcd(dev);
 	if (ret)
 		goto error_rst;
 
-	ret = nhd_c12832a1z_clear_lcd(dev);
+	ret = nhd_c12832a1z_print_string(dev, "asdfase");
 	if (ret)
 		goto error_rst;
 
