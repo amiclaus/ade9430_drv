@@ -89,7 +89,7 @@ struct nhd_c12832a1z_dev {
 	/** RESET pin gpio desc*/
 	struct no_os_gpio_desc     	*reset_pin;
 	/* SPI descriptor*/
-	struct no_os_spi_des		*spi_desc;
+	struct no_os_spi_desc		*spi_desc;
 };
 
 struct nhd_c12832a1z_init_param {
@@ -105,6 +105,12 @@ struct nhd_c12832a1z_init_param {
 /******************************************************************************/
 /************************ Functions Declarations ******************************/
 /******************************************************************************/
+
+int nhd_c12832a1z_write_cmd(struct nhd_c12832a1z_dev *dev, uint8_t cmd);
+
+int nhd_c12832a1z_write_data(struct nhd_c12832a1z_dev *dev, uint8_t data);
+
+int nhd_c12832a1z_clear_lcd(struct nhd_c12832a1z_dev *dev);
 
 /** Initialize the nhd_c12832a1z peripheral for display operation. */
 int nhd_c12832a1z_init(struct nhd_c12832a1z_dev **device, struct nhd_c12832a1z_init_param init_param);

@@ -314,6 +314,69 @@ static const uint8_t ASC16[256][8] = {
 /************************** Functions Implementation **************************/
 /******************************************************************************/
 
+
+int nhd_c12832a1z_write_cmd(struct nhd_c12832a1z_dev *dev, uint8_t cmd)
+{
+	int ret;
+
+	if(!dev->spi_desc || !dev->dc_pin)
+		return -EINVAL;
+
+	ret = no_os_gpio_set_value(dev->dc_pin, NHD_C12832A1Z_DC_CMD);
+	if (ret)
+		return ret;
+
+	return no_os_spi_write_and_read(dev->spi_desc, &cmd, 1U);
+}
+
+int nhd_c12832a1z_write_data(struct nhd_c12832a1z_dev *dev, uint8_t data)
+{
+	int ret;
+
+	if(!dev->spi_desc || !dev->dc_pin)
+		return -EINVAL;
+
+	ret = no_os_gpio_set_value(dev->dc_pin, NHD_C12832A1Z_DC_DATA);
+	if (ret)
+		return ret;
+
+	return no_os_spi_write_and_read(dev->spi_desc, &data, 1U);
+}
+
+int nhd_c12832a1z_clear_lcd(struct nhd_c12832a1z_dev *dev)
+{
+	int ret;
+	uint8_t page = 0xB0;
+	// lcd_write_control(0xAE); // Display OFF
+	ret = nhd_c12832a1z_write_cmd(dev, 0x40); // Display start address + 0x40
+	if (ret)
+		return ret;
+	for (unsigned int i = 0; i < 4; i++) {
+		// 32pixel display / 8 pixels per page = 4 pages
+		ret = nhd_c12832a1z_write_cmd(dev, page); // send page address
+		if (ret)
+			return ret;
+		// Sets the most significant 4 bits of the display RAM column address.
+		ret = nhd_c12832a1z_write_cmd(dev, 0x10); // column address upper 4 bits + 0x10
+		// Sets the least significant 4 bits of the display RAM column address.
+		if (ret)
+			return ret;
+		ret = nhd_c12832a1z_write_cmd(dev, 0x00); // column address lower 4 bits + 0x00
+		if (ret)
+			return ret;
+		for (unsigned int j = 0; j < 128; j++) {
+			// 128 columns wide
+			ret = nhd_c12832a1z_write_data(dev, 0xFF); // send picture data
+			if (ret)
+				return ret;
+		}
+		page++; // after 128 columns, go to next page
+	}
+	// nhd_c12832a1z_write_cmd(dev, 0xAF); // Display on
+
+	return 0;
+}
+
 /***************************************************************************//**
  * @brief Initializes nhd_c12832a1z for display screening.
  *
@@ -324,6 +387,7 @@ int nhd_c12832a1z_init(struct nhd_c12832a1z_dev **device,
 				struct nhd_c12832a1z_init_param init_param)
 {
 	struct nhd_c12832a1z_dev *dev;
+	uint8_t command[3];
 	int ret;
 
 	dev = (struct nhd_c12832a1z_dev *)calloc(1, sizeof(*dev));
@@ -358,39 +422,43 @@ int nhd_c12832a1z_init(struct nhd_c12832a1z_dev **device,
 			goto error_rst;
 	}
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_ADC_NORMAL, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, NDH_C12832A1Z_ADC_NORMAL);
 	if (ret)
 		goto error_rst;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, NHD_C12832A1Z_DISP_OFF, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, NHD_C12832A1Z_DISP_OFF);
 	if (ret)
 		goto error_rst;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_COM_REVERSE, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, NDH_C12832A1Z_COM_REVERSE);
 	if (ret)
 		goto error_rst;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_LCD_BIAS, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, NDH_C12832A1Z_LCD_BIAS);
 	if (ret)
 		goto error_rst;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_PWR_CTRL, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, NDH_C12832A1Z_PWR_CTRL);
 	if (ret)
 		goto error_rst;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_RES_RATIO, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, NDH_C12832A1Z_RES_RATIO);
 	if (ret)
 		goto error_rst;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_ELECTRIC_VOL, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, NDH_C12832A1Z_ELECTRIC_VOL);
 	if (ret)
 		goto error_rst;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, NDH_C12832A1Z_ELECTRIC_VAL, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, NDH_C12832A1Z_ELECTRIC_VAL);
 	if (ret)
 		goto error_rst;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, NHD_C12832A1Z_DISP_ON, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, NHD_C12832A1Z_DISP_ON);
+	if (ret)
+		goto error_rst;
+
+	ret = nhd_c12832a1z_clear_lcd(dev);
 	if (ret)
 		goto error_rst;
 
@@ -413,39 +481,34 @@ int nhd_c12832a1z_print_ascii(struct nhd_c12832a1z_dev *dev, uint8_t ascii,
 			     uint8_t row, uint8_t column)
 {
 	int ret;
-	unsigned char page = 0xB0;
+	uint8_t page = 0xB0;
 	uint8_t framebuffer_memory[4][128];
 
-	ret = no_os_gpio_direction_output(dev->dc_pin, NHD_C12832A1Z_DC_CMD);
+	ret = nhd_c12832a1z_write_cmd(dev, 0x40);
 	if (ret)
 		return ret;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, 0x40, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, page);
 	if (ret)
 		return ret;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, page, 1U);
+	ret = nhd_c12832a1z_write_cmd(dev, 0x10);
 	if (ret)
 		return ret;
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, 0x10, 1U);
-	if (ret)
-		return ret;
-
-	ret = no_os_spi_write_and_read(dev->spi_desc, 0x00, 1U);
-	if (ret)
-		return ret;
-	
-	ret = no_os_gpio_direction_output(dev->dc_pin, NHD_C12832A1Z_DC_DATA);
+	ret = nhd_c12832a1z_write_cmd(dev, 0x00);
 	if (ret)
 		return ret;
 
 	framebuffer_memory[0][0] = ASC16[1][2];
 
-	ret = no_os_spi_write_and_read(dev->spi_desc, framebuffer_memory[0][0], 1U);
+	ret = nhd_c12832a1z_write_data(dev, 0x00);
 	if (ret)
 		return ret;
 
+	ret = nhd_c12832a1z_write_data(dev, 0x54);
+	if (ret)
+		return ret;
 }
 
 /***************************************************************************//**
@@ -457,12 +520,5 @@ int nhd_c12832a1z_print_ascii(struct nhd_c12832a1z_dev *dev, uint8_t ascii,
 *******************************************************************************/
 int nhd_c12832a1z_display_on_off(struct nhd_c12832a1z_dev *dev, uint8_t on_off)
 {
-	int	ret;
-	uint8_t command;
-
-	ret = no_os_gpio_set_value(dev->dc_pin, NHD_C12832A1Z_DC_CMD);
-	if (ret != 0)
-		return -1;
-	command = (on_off == true) ? NHD_C12832A1Z_DISP_ON : NHD_C12832A1Z_DISP_OFF;
-	return no_os_spi_write_and_read(dev->spi_desc, &command, 1U);
+	return nhd_c12832a1z_write_cmd(dev, on_off);
 }
